@@ -8,6 +8,7 @@ from landlab import RasterModelGrid
 from typing import Tuple
 import json
 from geojson import FeatureCollection, Point, Feature
+from osgeo import osr
 
 
 def get_thames_data():
@@ -181,3 +182,20 @@ def save_geojson(object, filename: str) -> None:
     """Saves a geojson object to file"""
     f = open(filename, "w")
     json.dump(object, f)
+
+
+def BNG_to_WGS84_points(
+    eastings: np.ndarray, northings: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Converts coorindates on British National Grid into Long, Lat on WGS84"""
+
+    OSR_WGS84_REF = osr.SpatialReference()
+    OSR_WGS84_REF.ImportFromEPSG(4326)
+
+    OSR_BNG_REF = osr.SpatialReference()
+    OSR_BNG_REF.ImportFromEPSG(27700)
+
+    OSR_BNG_to_WGS84 = osr.CoordinateTransformation(OSR_BNG_REF, OSR_WGS84_REF)
+    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(np.vstack([eastings, northings]).T)
+    lat_long_array = np.array(list(map(np.array, lat_long_tuple_list)))
+    return (lat_long_array[:, 1], lat_long_array[:, 0])
