@@ -1,3 +1,4 @@
+*.png
 gmt.history
 *.geojson
 working.ipynb
