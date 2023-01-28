@@ -1,13 +1,15 @@
-import requests
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-from landlab.components.flow_accum.flow_accum_bw import find_drainage_area_and_discharge
-from landlab import RasterModelGrid
-from typing import Tuple
 import json
-from geojson import FeatureCollection, Point, Feature
+from typing import Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import requests
+from geojson import Feature, FeatureCollection, Point
+from landlab import RasterModelGrid
+from landlab.components.flow_accum.flow_accum_bw import \
+    find_drainage_area_and_discharge
+from matplotlib.colors import LogNorm
 from osgeo import osr
 
 
