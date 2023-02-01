@@ -1,3 +1,4 @@
+*.txt
 *.png
 gmt.history
 *.geojson
