@@ -13,7 +13,7 @@ from matplotlib.colors import LogNorm
 from osgeo import osr
 
 
-def get_thames_data():
+def get_current_discharge_status():
     """Gets real-time data from the Thames Water API"""
     # add in your API credentials here
     clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
@@ -162,7 +162,6 @@ def plot_sewage_map(
     cb.set_label("# Upstream Discharges")
     plt.scatter(active["X"], active["Y"], c="red", marker="x")
     plt.title(title)
-    plt.show()
 
 
 def xyz_to_geojson(
