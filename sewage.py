@@ -7,10 +7,57 @@ import pandas as pd
 import requests
 from geojson import Feature, FeatureCollection, Point
 from landlab import RasterModelGrid
-from landlab.components.flow_accum.flow_accum_bw import \
-    find_drainage_area_and_discharge
+from landlab.components.flow_accum.flow_accum_bw import find_drainage_area_and_discharge
 from matplotlib.colors import LogNorm
 from osgeo import osr
+
+
+def get_all_discharge_starts():
+    """Gets all discharge starts that have occurred since API online in April 2022"""
+    # add in your API credentials here
+    clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
+    clientSecret = "FD8A75e4e5a84aB19Cf9abDfAebC31eA"
+
+    api_root = "https://prod-tw-opendata-app.uk-e1.cloudhub.io"
+    api_resource = "/data/STE/v1/DischargeAlerts"
+    url = api_root + api_resource
+
+    # Iterate through using the 1000 output limit
+    num_outputs = 1000
+    i = 0
+    df = pd.DataFrame()
+    while num_outputs == 1000:
+        # Only extract the items corresponding to discharge *starts*. 
+        params = {
+            "limit": 1000,
+            "offset": i * 1000,
+            "col_1": "AlertType",
+            "operand_1": "eq",
+            "value_1": "Start",
+        }
+
+        # send the request
+        r = requests.get(
+            url,
+            headers={"client_id": clientID, "client_secret": clientSecret},
+            params=params,
+        )
+        print("Requesting from " + r.url)
+
+        # check response status and use only valid requests
+        if r.status_code == 200:
+            response = r.json()
+            df_temp = pd.json_normalize(response, "items")
+        else:
+            raise Exception(
+                "Request failed with status code {0}, and error message: {1}".format(
+                    r.status_code, r.json()
+                )
+            )
+        df = pd.concat([df, df_temp])
+        i += 1
+        num_outputs = df_temp.shape[0]
+    return df
 
 
 def get_current_discharge_status():
@@ -29,7 +76,9 @@ def get_current_discharge_status():
 
     # send the request
     r = requests.get(
-        url, headers={"client_id": clientID, "client_secret": clientSecret}, params=params
+        url,
+        headers={"client_id": clientID, "client_secret": clientSecret},
+        params=params,
     )
     print("Requesting from " + r.url)
 
@@ -51,7 +100,10 @@ def get_current_discharge_status():
 def geographic_coords_to_model_xy(xy_coords, grid):
     """Converts geographical coordinates (from lower left) into model
     grid coordinates (from upper left)"""
-    xy_of_upper_left = grid.xy_of_lower_left[0], grid.xy_of_lower_left[1] + grid.dy * grid.shape[0]
+    xy_of_upper_left = (
+        grid.xy_of_lower_left[0],
+        grid.xy_of_lower_left[1] + grid.dy * grid.shape[0],
+    )
     x = (xy_coords[0] - xy_of_upper_left[0]) / grid.dx
     y = (xy_of_upper_left[1] - xy_coords[1]) / grid.dy
     return x, y
@@ -60,7 +112,10 @@ def geographic_coords_to_model_xy(xy_coords, grid):
 def model_xy_to_geographic_coords(model_xy_coords, grid):
     """Converts model grid coordinates (from upper left) to geographical coordinates
     (from lower left)"""
-    xy_of_upper_left = grid.xy_of_lower_left[0], grid.xy_of_lower_left[1] + grid.dy * grid.shape[0]
+    xy_of_upper_left = (
+        grid.xy_of_lower_left[0],
+        grid.xy_of_lower_left[1] + grid.dy * grid.shape[0],
+    )
     x = xy_of_upper_left[0] + model_xy_coords[0] * grid.dx
     y = xy_of_upper_left[1] - model_xy_coords[1] * grid.dy
     return x, y
@@ -83,7 +138,9 @@ def calc_downstream_polluted_nodes(
     x,y (of downstream nodes) and z (number of upstream sources)"""
 
     active = get_active_rows(sewage_df)
-    x, y = geographic_coords_to_model_xy((active["X"].to_numpy(), active["Y"].to_numpy()), mg)
+    x, y = geographic_coords_to_model_xy(
+        (active["X"].to_numpy(), active["Y"].to_numpy()), mg
+    )
     nodes = np.ravel_multi_index(
         (y.astype(int), x.astype(int)), mg.shape
     )  # Grid nodes of point sources
@@ -100,8 +157,12 @@ def calc_downstream_polluted_nodes(
     dstr_polluted_nodes = np.where(number_upstream_sources != 0)[0]
     # Number of upstream nodes at sites
     dstr_polluted_vals = number_upstream_sources[dstr_polluted_nodes]
-    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(dstr_polluted_nodes, mg.shape)
-    dstr_polluted_xy = model_xy_to_geographic_coords((dstr_polluted_gridx, dstr_polluted_gridy), mg)
+    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(
+        dstr_polluted_nodes, mg.shape
+    )
+    dstr_polluted_xy = model_xy_to_geographic_coords(
+        (dstr_polluted_gridx, dstr_polluted_gridy), mg
+    )
     return (dstr_polluted_xy[0], dstr_polluted_xy[1], dstr_polluted_vals)
 
 
@@ -197,6 +258,8 @@ def BNG_to_WGS84_points(
     OSR_BNG_REF.ImportFromEPSG(27700)
 
     OSR_BNG_to_WGS84 = osr.CoordinateTransformation(OSR_BNG_REF, OSR_WGS84_REF)
-    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(np.vstack([eastings, northings]).T)
+    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(
+        np.vstack([eastings, northings]).T
+    )
     lat_long_array = np.array(list(map(np.array, lat_long_tuple_list)))
     return (lat_long_array[:, 1], lat_long_array[:, 0])
