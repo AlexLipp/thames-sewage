@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Tuple
 
@@ -27,7 +28,7 @@ def get_all_discharge_starts():
     i = 0
     df = pd.DataFrame()
     while num_outputs == 1000:
-        # Only extract the items corresponding to discharge *starts*. 
+        # Only extract the items corresponding to discharge *starts*.
         params = {
             "limit": 1000,
             "offset": i * 1000,
@@ -57,6 +58,113 @@ def get_all_discharge_starts():
         df = pd.concat([df, df_temp])
         i += 1
         num_outputs = df_temp.shape[0]
+    print("Returning", df.shape[0], "`Start` records")
+    return df
+
+
+def minutes_elapsed(iso_str1, iso_str2):
+    """Calculates minutes elapsed between two ISO8601 strings"""
+    dt1 = datetime.datetime.fromisoformat(iso_str1)
+    dt2 = datetime.datetime.fromisoformat(iso_str2)
+
+    if dt2 < dt1:  # swap if necessary so that dt1 is earlier
+        dt1, dt2 = dt2, dt1
+
+    elapsed_days = (dt2 - dt1).days
+    elapsed_minutes = (elapsed_days * 24 * 60) + ((dt2 - dt1).seconds // 60)
+
+    return elapsed_minutes
+
+
+def get_all_discharge_alerts():
+    """Gets all discharge alerts (e.g., Start, Stop and offline/online status) that have occurred since API online in April 2022"""
+    # add in your API credentials here
+    clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
+    clientSecret = "FD8A75e4e5a84aB19Cf9abDfAebC31eA"
+
+    api_root = "https://prod-tw-opendata-app.uk-e1.cloudhub.io"
+    api_resource = "/data/STE/v1/DischargeAlerts"
+    url = api_root + api_resource
+
+    # Iterate through using the 1000 output limit
+    num_outputs = 1000
+    i = 0
+    df = pd.DataFrame()
+    while num_outputs == 1000:
+        # Only extract the items corresponding to discharge *starts*.
+        params = {"limit": 1000, "offset": i * 1000}
+
+        # send the request
+        r = requests.get(
+            url,
+            headers={"client_id": clientID, "client_secret": clientSecret},
+            params=params,
+        )
+        print("Requesting from " + r.url)
+
+        # check response status and use only valid requests
+        if r.status_code == 200:
+            response = r.json()
+            df_temp = pd.json_normalize(response, "items")
+        else:
+            raise Exception(
+                "Request failed with status code {0}, and error message: {1}".format(
+                    r.status_code, r.json()
+                )
+            )
+        df = pd.concat([df, df_temp])
+        i += 1
+        num_outputs = df_temp.shape[0]
+    print("Returning", df.shape[0], "records")
+    return df
+
+
+def get_all_discharge_stops():
+    """Gets all discharge stops that have occurred since API online in April 2022"""
+    # add in your API credentials here
+    clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
+    clientSecret = "FD8A75e4e5a84aB19Cf9abDfAebC31eA"
+
+    api_root = "https://prod-tw-opendata-app.uk-e1.cloudhub.io"
+    api_resource = "/data/STE/v1/DischargeAlerts"
+    url = api_root + api_resource
+
+    # Iterate through using the 1000 output limit
+    num_outputs = 1000
+    i = 0
+    df = pd.DataFrame()
+    while num_outputs == 1000:
+        # Only extract the items corresponding to discharge *starts*.
+        params = {
+            "limit": 1000,
+            "offset": i * 1000,
+            "col_1": "AlertType",
+            "operand_1": "eq",
+            "value_1": "Stop",
+        }
+
+        # send the request
+        r = requests.get(
+            url,
+            headers={"client_id": clientID, "client_secret": clientSecret},
+            params=params,
+        )
+        print("Requesting from " + r.url)
+
+        # check response status and use only valid requests
+        if r.status_code == 200:
+            response = r.json()
+            df_temp = pd.json_normalize(response, "items")
+        else:
+            raise Exception(
+                "Request failed with status code {0}, and error message: {1}".format(
+                    r.status_code, r.json()
+                )
+            )
+        df = pd.concat([df, df_temp])
+        i += 1
+        num_outputs = df_temp.shape[0]
+    print("Returning", df.shape[0], "`Stop` records")
     return df
 
 
@@ -93,7 +201,11 @@ def get_current_discharge_status():
             )
         )
 
-    # you can then manipulate the dataframe df as you wish:
+    if df.shape[0] == 1000:
+        raise Exception(
+            "Warning: Number of outputs is at or exceeds 1000 output limit. \nOutputs may be incomplete"
+        )
+    print("Returning", df.shape[0], "records")
     return df
 
 
@@ -138,9 +250,7 @@ def calc_downstream_polluted_nodes(
     x,y (of downstream nodes) and z (number of upstream sources)"""
 
     active = get_active_rows(sewage_df)
-    x, y = geographic_coords_to_model_xy(
-        (active["X"].to_numpy(), active["Y"].to_numpy()), mg
-    )
+    x, y = geographic_coords_to_model_xy((active["X"].to_numpy(), active["Y"].to_numpy()), mg)
     nodes = np.ravel_multi_index(
         (y.astype(int), x.astype(int)), mg.shape
     )  # Grid nodes of point sources
@@ -157,13 +267,76 @@ def calc_downstream_polluted_nodes(
     dstr_polluted_nodes = np.where(number_upstream_sources != 0)[0]
     # Number of upstream nodes at sites
     dstr_polluted_vals = number_upstream_sources[dstr_polluted_nodes]
-    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(
-        dstr_polluted_nodes, mg.shape
-    )
-    dstr_polluted_xy = model_xy_to_geographic_coords(
-        (dstr_polluted_gridx, dstr_polluted_gridy), mg
-    )
+    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(dstr_polluted_nodes, mg.shape)
+    dstr_polluted_xy = model_xy_to_geographic_coords((dstr_polluted_gridx, dstr_polluted_gridy), mg)
     return (dstr_polluted_xy[0], dstr_polluted_xy[1], dstr_polluted_vals)
+
+
+def alerts_to_events_df(alerts: pd.DataFrame) -> pd.DataFrame:
+    """Converts dataframe of all discharge outlet alerts and returns a
+    dataframe of specfic discharge events with the following columns:
+    'LocationName, PermitNumber, LocationGridRef, X, Y, ReceivingWaterCourse, StartTime,
+     StopTime, Duration , CompleteOutput, OngoingDischarge'"""
+    events = []
+    for site in alerts["PermitNumber"].unique():
+        # Iterate over all sites
+        site_alerts = alerts.loc[alerts["PermitNumber"] == site]
+        n_alerts = site_alerts.shape[0]
+        for start_index in np.where(site_alerts["AlertType"] == "Start")[0]:
+            start_alert = site_alerts.iloc[start_index]
+            discharge_event = {
+                "LocationName": start_alert["LocationName"],
+                "PermitNumber": start_alert["PermitNumber"],
+                "LocationGridRef": start_alert["LocationGridRef"],
+                "X": start_alert["X"],
+                "Y": start_alert["Y"],
+                "ReceivingWaterCourse": start_alert["ReceivingWaterCourse"],
+                "StartDateTime": start_alert["DateTime"],
+                "StopDateTime": None,
+                "Duration": None,
+                "CompleteOutput": None,
+                "OngoingDischarge": None,
+            }
+
+            # Iterate over every "Start" alert for that site
+            if start_index == n_alerts - 1:
+                # If start_index is last row, then station is currently discharging
+                # print("Ongoing discharge")
+                print(start_alert)
+                discharge_event["OngoingDischarge"] = True
+                now = datetime.datetime.now().isoformat(timespec="seconds")
+                discharge_event["StopDateTime"] = now
+            else:
+                # Fetch the next alert from that station after discharge started
+                next_alert = site_alerts.iloc[start_index + 1]
+                discharge_event["OngoingDischarge"] = False
+                discharge_event["StopDateTime"] = next_alert["DateTime"]
+                if next_alert["AlertType"] == "Stop":
+                    # Discharge 'start' is followed by a 'stop'
+                    # print("Discharge start followed by a stop")
+                    discharge_event["CompleteOutput"] = True
+                elif next_alert["AlertType"] == "Offline start":
+                    # Discharge 'start' followed by the station going offline (bad!)
+                    # print("Discharge info stopped by offline status")
+                    discharge_event["CompleteOutput"] = False
+
+                elif next_alert["AlertType"] == "Offline stop":
+                    # This should never happen, so we raise an exception.
+                    raise Exception(
+                        "Error: AlertType `Start` followed by `Offline Start`"
+                        + "\n"
+                        + "Offending discharge:"
+                        + "\n"
+                        + str(site_alerts.iloc[start_index])
+                    )
+            discharge_event["Duration"] = minutes_elapsed(
+                discharge_event["StartDateTime"], discharge_event["StopDateTime"]
+            )
+            events += [discharge_event]
+    out_df = pd.DataFrame(events)
+    out_df.sort_values(by="StartDateTime", inplace=True)
+    out_df.reset_index(inplace=True, drop=True)
+    return out_df
 
 
 def plot_sewage_map(
@@ -240,8 +413,8 @@ def xyz_to_geojson(
     return geojson_points
 
 
-def save_geojson(object, filename: str) -> None:
-    """Saves a geojson object to file"""
+def save_json(object, filename: str) -> None:
+    """Saves a (geo)json object to file"""
     f = open(filename, "w")
     json.dump(object, f)
 
@@ -258,8 +431,7 @@ def BNG_to_WGS84_points(
     OSR_BNG_REF.ImportFromEPSG(27700)
 
     OSR_BNG_to_WGS84 = osr.CoordinateTransformation(OSR_BNG_REF, OSR_WGS84_REF)
-    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(
-        np.vstack([eastings, northings]).T
-    )
+    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(np.vstack([eastings, northings]).T)
     lat_long_array = np.array(list(map(np.array, lat_long_tuple_list)))
+    print(lat_long_array)
     return (lat_long_array[:, 1], lat_long_array[:, 0])

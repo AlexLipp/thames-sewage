@@ -28,7 +28,12 @@ dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 dt_string_file = now.strftime("%y%m%d_%H%M%S")
 
 x, y, z = swg.calc_downstream_polluted_nodes(sewage_df, mg)
-long, lat = swg.BNG_to_WGS84_points(x, y)
+if len(x)>0:
+    long, lat = swg.BNG_to_WGS84_points(x, y)
+else:
+    print("! No discharges currently occurring !")
+    long, lat = [], []
+
 
 print("### Plotting outputs ###")
 swg.plot_sewage_map(downstream_xyz=(x, y, z), grid=mg, sewage_df=sewage_df, title=dt_string)
@@ -36,4 +41,4 @@ plt.savefig("output_dir/plots/" + dt_string_file + ".png")
 plt.show()
 print("### Saving outputs ###")
 out_geojson = swg.xyz_to_geojson(long, lat, z, label="upstream_sources")
-swg.save_geojson(out_geojson, "output_dir/geojsons/" + dt_string_file + ".geojson")
+swg.save_json(out_geojson, "output_dir/geojsons/" + dt_string_file + ".geojson")
