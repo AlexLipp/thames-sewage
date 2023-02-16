@@ -1,3 +1,4 @@
+*.json
 *.txt
 *.png
 gmt.history
