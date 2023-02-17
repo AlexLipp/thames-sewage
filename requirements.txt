@@ -4,4 +4,4 @@ pandas
 requests
 geojson
 landlab
-osgeo
+gdal

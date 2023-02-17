@@ -6,3 +6,4 @@ gmt.history
 *.geojson
 working.ipynb
 __pycache__/
+env
