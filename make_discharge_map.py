@@ -7,11 +7,11 @@ import pickle
 """Fetches real-time discharge data from Thames Water and visualises downstream impacts in real time"""
 
 print("### Loading in drainage map ###")
-# Load from D8 grid
-# mg = ac.toolkit.load_d8("input_dir/thames_d8.nc")
+# Load from Topographic grid
+# mg = ac.toolkit.load_topo("input_dir/thames_elev.nc")
 
 # Load from pickled file for speed
-with open('input_dir/mg.obj', 'rb') as handle:
+with open('input_dir/mg_elev.obj', 'rb') as handle:
     mg = pickle.load(handle)
 
 print("### Getting sewage discharge data ###")
