@@ -2,23 +2,17 @@ import autocatchments as ac
 from datetime import datetime
 import matplotlib.pyplot as plt
 import sewage as swg
+import pickle
 
 """Fetches real-time discharge data from Thames Water and visualises downstream impacts in real time"""
 
 print("### Loading in drainage map ###")
-mg = ac.toolkit.load_d8("input_dir/thames_d8.nc")
+# Load from D8 grid
+# mg = ac.toolkit.load_d8("input_dir/thames_d8.nc")
 
-# Twice as fast but requires pre-calculated node-arrays which
-# are stored inefficiently as plain text in hard-drive
-# (2*100Mb for .txt's vs 20MB for .nc)
-
-# mg = ac.toolkit.load_from_node_arrays(
-#     path_to_receiver_nodes="input_dir/thames_receiver_nodes.txt",
-#     path_to_ordered_nodes="input_dir/thames_ordered_nodes.txt",
-#     shape=mg.shape,
-#     xy_of_lower_left=mg.xy_of_lower_left,
-#     xy_spacing= (mg.dx,mg.dy)
-# )
+# Load from pickled file for speed
+with open('input_dir/mg.obj', 'rb') as handle:
+    mg = pickle.load(handle)
 
 print("### Getting sewage discharge data ###")
 sewage_df = swg.get_current_discharge_status()
