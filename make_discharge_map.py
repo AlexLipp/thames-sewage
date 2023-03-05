@@ -17,8 +17,6 @@ with open("input_dir/mg_elev.obj", "rb") as handle:
 
 print("### Getting sewage discharge data ###")
 sewage_df = swg.get_current_discharge_status()
-sewage_df.loc[sewage_df["LocationName"] == "Abingdon", "AlertStatus"] = "Discharging"
-sewage_df.loc[sewage_df["LocationName"] == "Worminghall", "AlertStatus"] = "Discharging"
 
 # datetime object containing current date and time
 now = datetime.now()
