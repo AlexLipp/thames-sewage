@@ -1,12 +1,14 @@
 import datetime
 import json
+from datetime import datetime
 from typing import Tuple
 
+import autocatchments as ac
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
-from geojson import Feature, FeatureCollection, Point
+from geojson import Feature, FeatureCollection, LineString, Point
 from landlab import RasterModelGrid
 from landlab.components.flow_accum.flow_accum_bw import find_drainage_area_and_discharge
 from matplotlib.colors import LogNorm
@@ -263,6 +265,8 @@ def calc_downstream_polluted_nodes(
         r=mg.at_node["flow__receiver_node"],
         runoff=source_array,
     )
+    # Append number of upstream sources as a field to the RasterModelGrid
+    mg.add_field("number_upstream_discharges", number_upstream_sources)
     # Nodes downstream of a sewage source
     dstr_polluted_nodes = np.where(number_upstream_sources != 0)[0]
     # Number of upstream nodes at sites
@@ -398,7 +402,7 @@ def plot_sewage_map(
     plt.title(title)
 
 
-def xyz_to_geojson(
+def xyz_to_geojson_points(
     xs: np.ndarray, ys: np.ndarray, vals: np.ndarray, label: str
 ) -> FeatureCollection:
     """Converts sequence of x, y and 'values' into a geojson FeatureCollection of points.
@@ -433,5 +437,46 @@ def BNG_to_WGS84_points(
     OSR_BNG_to_WGS84 = osr.CoordinateTransformation(OSR_BNG_REF, OSR_WGS84_REF)
     lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(np.vstack([eastings, northings]).T)
     lat_long_array = np.array(list(map(np.array, lat_long_tuple_list)))
-    print(lat_long_array)
     return (lat_long_array[:, 1], lat_long_array[:, 0])
+
+
+def ids_to_xyz(
+    node_ids: np.ndarray, grid: RasterModelGrid, field: str
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    """Converts list of node ids into arrays of model x, y coordinates
+    and values of a given field"""
+
+    model_ys, model_xs = np.unravel_index(node_ids, grid.shape)
+    xs, ys = ac.toolkit.model_xy_to_geographic_coords((model_xs, model_ys), grid)
+    vals = grid.at_node[field][node_ids]
+    return (xs, ys, vals)
+
+
+def xyz_to_linestring(xs: np.ndarray, ys: np.ndarray, label: str, value: float):
+    """Turns a list of x,y coordinates and a given label, value pair into
+    a geojson LineString feature"""
+    geom = LineString(coordinates=tuple(zip(xs, ys)))
+    prop = {label: value}
+    return Feature(geometry=geom, properties=prop)
+
+
+def profiler_data_struct_to_geojson(
+    profiler_data_struct, grid: RasterModelGrid, field: str
+) -> FeatureCollection:
+    """Turns output from ChannelProfiler into a geojson FeatureCollection
+    of LineStrings with property corresponding to chosen field"""
+    features = []
+    for _, segments in profiler_data_struct.items():
+        for _, segment in segments.items():
+            xs, ys, vals = ids_to_xyz(segment["ids"], grid, field)
+            longs, lats = BNG_to_WGS84_points(xs, ys)
+            features += [xyz_to_linestring(longs, lats, field, vals[-1])]
+
+    return FeatureCollection(features)
+
+
+def empty_linestring_featurecollection(label: str):
+    """Generates an empty linestring geojson feature collection"""
+    feat = Feature(geometry=LineString(([])), properties={label: 0})
+    return FeatureCollection([feat])
