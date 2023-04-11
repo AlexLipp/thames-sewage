@@ -10,6 +10,14 @@ Install everything via conda
 may need to symlink libtiff
 do conda update --all at the end
 
+
+conda create -n thames-sewage python=3.10
+
+conda install -c conda-forge matplotlib geojson landlab gdal
+conda install -c anaconda numpy pandas requests
+pip install git+https://github.com/AlexLipp/autocatchments.git
+
+
 todo: make output_dirs/plots & output_dirs/geojsons folder dynamically, or commit the empty dirs
 
 
