@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+
 import time as time
 from datetime import datetime
 import sewage as swg
 
 
-def make_maps_continuously(repeat_time: float = 900):
+def make_maps_continuously(repeat_time: float = 900.0):
     """Repeatedly calls `make_discharge_map` at specified repeat time
     given in seconds. Default repeat time is 15 minutes (900 seconds).
     Note, if execution time exceeds the run"""
@@ -28,7 +30,7 @@ def make_maps_continuously(repeat_time: float = 900):
 
 
 def main():
-    make_maps_continuously(1)
+    make_maps_continuously()
 
 
 if __name__ == "__main__":
