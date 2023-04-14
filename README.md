@@ -27,3 +27,19 @@ Running `python make_discharge_map.py` from the command line will generate a tim
 ![28123_2032](https://user-images.githubusercontent.com/10188895/215289603-3315e7b6-5a50-48ed-9ef0-7a9269e5e2e3.png)
 
 
+
+
+
+
+mkdir -p ~/.aws-lambda-rie
+curl -Lo ~/.aws-lambda-rie/aws-lambda-rie https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie
+chmod +x ~/.aws-lambda-rie/aws-lambda-rie
+
+
+docker build -t sewage .
+
+docker run -v ~/.aws-lambda-rie:/aws-lambda -p 9000:8080 --platform=linux/amd64 --entrypoint /aws-lambda/aws-lambda-rie sewage /opt/conda-env/bin/python -m awslambdaric sewage.make_discharge_map
+
+then:
+
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"payload":"hello world!"}'

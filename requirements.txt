@@ -1,7 +1,0 @@
-matplotlib
-numpy
-pandas
-requests
-geojson
-landlab
-gdal
