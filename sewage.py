@@ -1,15 +1,16 @@
 import datetime
 import json
+import pickle
 from datetime import datetime
 from typing import Tuple
 
 import autocatchments as ac
-from autocatchments import channel_profiler as profiler
+import boto3
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pickle
 import requests
+from autocatchments import channel_profiler as profiler
 from geojson import Feature, FeatureCollection, LineString, Point
 from landlab import RasterModelGrid
 from landlab.components.flow_accum.flow_accum_bw import find_drainage_area_and_discharge
@@ -445,7 +446,6 @@ def BNG_to_WGS84_points(
 def ids_to_xyz(
     node_ids: np.ndarray, grid: RasterModelGrid, field: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-
     """Converts list of node ids into arrays of model x, y coordinates
     and values of a given field"""
 
@@ -482,6 +482,36 @@ def empty_linestring_featurecollection(label: str):
     """Generates an empty linestring geojson feature collection"""
     feat = Feature(geometry=LineString(([])), properties={label: 0})
     return FeatureCollection([feat])
+
+
+def upload_file_to_s3(file_path: str, bucket_name: str, object_name: str):
+    """Uploads a file to an AWS bucket"""
+    session = boto3.Session(profile_name="alex")
+    s3 = session.client("s3")
+    try:
+        s3.upload_file(file_path, bucket_name, object_name)
+        print("File uploaded successfully.")
+    except Exception as e:
+        print(f"Error uploading file: {str(e)}")
+
+
+def empty_s3_folder(bucket_name: str, folder_name: str) -> None:
+    """Empties a folder in an AWS bucket"""
+
+    session = boto3.Session(profile_name="alex")
+    s3 = session.client("s3")
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=folder_name)
+
+    if "Contents" in response:
+        # Construct the list of objects to delete
+        objects_to_delete = [{"Key": obj["Key"]} for obj in response["Contents"]]
+
+        # Perform the batch delete operation
+        s3.delete_objects(Bucket=bucket_name, Delete={"Objects": objects_to_delete})
+
+        print(f"All objects in '{folder_name}' folder deleted successfully.")
+    else:
+        print(f"No objects found in '{folder_name}' folder.")
 
 
 def make_discharge_map():
@@ -523,6 +553,21 @@ def make_discharge_map():
 
     print("### Saving outputs ###")
     save_json(out_geojson, "output_dir/geojsons/" + dt_string_file + ".geojson")
+
+    print("### Uploading outputs to AWS bucket ###")
+    file_path = "output_dir/geojsons/" + dt_string_file + ".geojson"
+    bucket_name = "thamessewage"  # S3 bucket name
+    aws_object_name = dt_string_file + ".geojson"  # The name of the file in the S3 bucket
+
+    empty_s3_folder(bucket_name=bucket_name, folder_name="now/")  # Empty the 'now' folder
+    # Upload file to current 'now' output and also the long-term storage 'past' folder
+    upload_file_to_s3(
+        file_path=file_path, bucket_name=bucket_name, object_name="now/" + aws_object_name
+    )
+    upload_file_to_s3(
+        file_path=file_path, bucket_name=bucket_name, object_name="past/" + aws_object_name
+    )
+
     print("### Plotting outputs ###")
     plot_sewage_map(downstream_xyz=(x, y, z), grid=mg, sewage_df=sewage_df, title=dt_string)
     plt.savefig("output_dir/plots/" + dt_string_file + ".png")
