@@ -11,7 +11,7 @@ RUN ./bin/micromamba env create --file /tmp/micromamba-env.yml --prefix /opt/con
 RUN mv /var/lang/bin/python3.10 /var/lang/bin/python3.10-clean && ln -sf /opt/conda-env/bin/python /var/lang/bin/python3.10
 
 COPY src/sewage.py /var/task/sewage.py
-COPY pickled  /var/task/pickled
+COPY input_dir/mg_elev.obj  /var/task/input_dir/mg_elev.obj
 COPY output_dir /var/task/output_dir
 
 ENTRYPOINT [ "/opt/conda-env/bin/python", "-m", "awslambdaric" ]
