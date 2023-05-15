@@ -69,8 +69,8 @@ def get_all_discharge_starts():
 
 def minutes_elapsed(iso_str1, iso_str2):
     """Calculates minutes elapsed between two ISO8601 strings"""
-    dt1 = datetime.datetime.fromisoformat(iso_str1)
-    dt2 = datetime.datetime.fromisoformat(iso_str2)
+    dt1 = datetime.fromisoformat(iso_str1)
+    dt2 = datetime.fromisoformat(iso_str2)
 
     if dt2 < dt1:  # swap if necessary so that dt1 is earlier
         dt1, dt2 = dt2, dt1
@@ -309,9 +309,9 @@ def alerts_to_events_df(alerts: pd.DataFrame) -> pd.DataFrame:
             if start_index == n_alerts - 1:
                 # If start_index is last row, then station is currently discharging
                 # print("Ongoing discharge")
-                print(start_alert)
+                # print(start_alert)
                 discharge_event["OngoingDischarge"] = True
-                now = datetime.datetime.now().isoformat(timespec="seconds")
+                now = datetime.now().isoformat(timespec="seconds")
                 discharge_event["StopDateTime"] = now
             else:
                 # Fetch the next alert from that station after discharge started
@@ -571,3 +571,30 @@ def make_discharge_map():
     print("### Plotting outputs ###")
     plot_sewage_map(downstream_xyz=(x, y, z), grid=mg, sewage_df=sewage_df, title=dt_string)
     plt.savefig("output_dir/plots/" + dt_string_file + ".png")
+
+
+def get_all_past_discharges():
+    """Retrieves all discharge events that have occurred/are occurring
+    since start of data records. Saves as a .json and upload to AWS bucket"""
+
+    # Set up
+    now = datetime.now()
+    dt_string_file = now.strftime("%y%m%d_%H%M%S")
+    bucket_name = "thamessewage"  # S3 bucket name
+    aws_object_name = dt_string_file + ".json"  # The name of the file in the S3 bucket
+    file_path = "output_dir/discharges_to_date/discharges.json"
+
+    alerts = get_all_discharge_alerts()
+    alerts.sort_values(by="DateTime", ascending=True, inplace=True)
+    events_df = alerts_to_events_df(alerts)
+    events_dict = events_df.to_dict()
+    save_json(events_dict, file_path)
+
+    empty_s3_folder(
+        bucket_name=bucket_name, folder_name="discharges_to_date/"
+    )  # Empty the 'now' folder
+    upload_file_to_s3(
+        file_path=file_path,
+        bucket_name=bucket_name,
+        object_name="discharges_to_date/" + aws_object_name,
+    )
