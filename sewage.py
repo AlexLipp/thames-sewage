@@ -500,6 +500,12 @@ def upload_file_to_s3(file_path: str, bucket_name: str, object_name: str):
         s3.upload_file(file_path, bucket_name, object_name)
         # Give public read access
         s3.put_object_acl(ACL="public-read", Bucket=bucket_name, Key=object_name)
+        # Set cache-control headers to prevent caching
+        s3.put_object_tagging(
+            Bucket=bucket_name,
+            Key=object_name,
+            Tagging={"TagSet": [{"Key": "Cache-Control", "Value": "no-cache"}]},
+        )
         print("File uploaded successfully.")
     except Exception as e:
         print(f"Error uploading file: {str(e)}")
