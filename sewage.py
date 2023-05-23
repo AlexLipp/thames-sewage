@@ -243,6 +243,21 @@ def get_active_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
     return sewage_df.loc[sewage_df["AlertStatus"] == "Discharging", :]
 
 
+def get_recent_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
+    """Only returns rows actively discharging"""
+    return sewage_df.loc[sewage_df["AlertPast48Hours"], :]
+
+
+def get_active_and_recent_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
+    """Returns rows actively discharging or that discharged in last 48 hours"""
+    return sewage_df.loc[
+        np.logical_or(
+            sewage_df["AlertStatus"] == "Discharging", sewage_df["AlertPast48Hours"]
+        ),
+        :,
+    ]
+
+
 def get_inactive_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
     """Returns rows not actively discharging"""
     return sewage_df.loc[sewage_df["AlertStatus"] == "Not discharging", :]
@@ -254,7 +269,9 @@ def calc_downstream_polluted_nodes(
     """Propagates sewage sources downstream returning tuple of
     x,y (of downstream nodes) and z (number of upstream sources)"""
 
-    active = get_active_rows(sewage_df)
+    # active = get_active_rows(sewage_df)
+    active = get_active_and_recent_rows(sewage_df)
+
     x, y = geographic_coords_to_model_xy(
         (active["X"].to_numpy(), active["Y"].to_numpy()), mg
     )
@@ -364,6 +381,7 @@ def plot_sewage_map(
     z = downstream_xyz[2]
 
     active = get_active_rows(sewage_df)
+    recent = get_recent_rows(sewage_df)
     inactive = get_inactive_rows(sewage_df)
 
     plt.figure(figsize=(10, 10))
@@ -387,7 +405,8 @@ def plot_sewage_map(
 
     plt.scatter(inactive["X"], inactive["Y"], c="green", marker="x", s=10)
     plt.scatter(active["X"], active["Y"], c="red", marker="x")
-    plt.legend(["Inactive", "Discharging"])
+    plt.scatter(recent["X"], recent["Y"], c="orange", marker="x", s=10)
+    plt.legend(["Inactive", "Discharging", "Active in last 48 hrs"])
     plt.title(title)
 
     plt.subplot(2, 1, 2)
@@ -408,6 +427,7 @@ def plot_sewage_map(
     cb = plt.colorbar()
     cb.set_label("# Upstream Discharges")
     plt.scatter(active["X"], active["Y"], c="red", marker="x")
+    plt.scatter(recent["X"], recent["Y"], c="orange", marker="x", s=10)
     plt.title(title)
 
 
@@ -549,8 +569,11 @@ def make_discharge_map():
     dt_string_file = now.strftime("%y%m%d_%H%M%S")
     x, y, z = calc_downstream_polluted_nodes(sewage_df, mg)
 
-    if get_active_rows(sewage_df).shape[0] != 0:
-        print(get_active_rows(sewage_df).shape[0], " discharges currently occurring")
+    if get_active_and_recent_rows(sewage_df).shape[0] != 0:
+        print(
+            get_active_and_recent_rows(sewage_df).shape[0],
+            " CSOs discharging now or within the last 48 hours",
+        )
         print("Building channel profile structure")
         cp = profiler.ChannelProfiler(
             mg,
