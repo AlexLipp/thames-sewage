@@ -1,9 +1,11 @@
 
 # Sewage Discharges in the Thames Basin
 
-Realtime mapping the downstream impact of Combined Sewage Overflow discharge events in the Thames basin. This repository provides the back-end for [`www.sewagemap.co.uk`](https://www.sewagemap.co.uk/).
+Realtime mapping the downstream impact of Combined Sewage Overflow discharge events in the Thames basin. This repository provides the back-end for [`www.sewagemap.co.uk`](https://www.sewagemap.co.uk/). 
 
-![Twitter Follow](https://img.shields.io/twitter/follow/AlexGLipp?style=social) ![Twitter Follow](https://img.shields.io/twitter/follow/JdMapDev?style=social) 
+This was developed by [Alex Lipp](https://github.com/AlexLipp), [Sudhir Balaji](https://github.com/sudhir-b) and others. Please feel free to raise an issue above or contact us directly 
+
+![Twitter Follow](https://img.shields.io/twitter/follow/AlexGLipp?style=social)
 
 ## Installation 
 
@@ -15,4 +17,3 @@ Running `python make_discharge_map.py` from the command line will generate a tim
 
 ## Contact 
 
-Please feel free to raise an issue or suggestion. 
