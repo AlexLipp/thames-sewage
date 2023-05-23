@@ -255,7 +255,9 @@ def calc_downstream_polluted_nodes(
     x,y (of downstream nodes) and z (number of upstream sources)"""
 
     active = get_active_rows(sewage_df)
-    x, y = geographic_coords_to_model_xy((active["X"].to_numpy(), active["Y"].to_numpy()), mg)
+    x, y = geographic_coords_to_model_xy(
+        (active["X"].to_numpy(), active["Y"].to_numpy()), mg
+    )
     nodes = np.ravel_multi_index(
         (y.astype(int), x.astype(int)), mg.shape
     )  # Grid nodes of point sources
@@ -274,8 +276,12 @@ def calc_downstream_polluted_nodes(
     dstr_polluted_nodes = np.where(number_upstream_sources != 0)[0]
     # Number of upstream nodes at sites
     dstr_polluted_vals = number_upstream_sources[dstr_polluted_nodes]
-    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(dstr_polluted_nodes, mg.shape)
-    dstr_polluted_xy = model_xy_to_geographic_coords((dstr_polluted_gridx, dstr_polluted_gridy), mg)
+    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(
+        dstr_polluted_nodes, mg.shape
+    )
+    dstr_polluted_xy = model_xy_to_geographic_coords(
+        (dstr_polluted_gridx, dstr_polluted_gridy), mg
+    )
     return (dstr_polluted_xy[0], dstr_polluted_xy[1], dstr_polluted_vals)
 
 
@@ -438,7 +444,9 @@ def BNG_to_WGS84_points(
     OSR_BNG_REF.ImportFromEPSG(27700)
 
     OSR_BNG_to_WGS84 = osr.CoordinateTransformation(OSR_BNG_REF, OSR_WGS84_REF)
-    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(np.vstack([eastings, northings]).T)
+    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(
+        np.vstack([eastings, northings]).T
+    )
     lat_long_array = np.array(list(map(np.array, lat_long_tuple_list)))
     return (lat_long_array[:, 1], lat_long_array[:, 0])
 
@@ -490,6 +498,14 @@ def upload_file_to_s3(file_path: str, bucket_name: str, object_name: str):
     s3 = session.client("s3")
     try:
         s3.upload_file(file_path, bucket_name, object_name)
+        # Give public read access
+        s3.put_object_acl(ACL="public-read", Bucket=bucket_name, Key=object_name)
+        # Set cache-control headers to prevent caching
+        s3.put_object_tagging(
+            Bucket=bucket_name,
+            Key=object_name,
+            Tagging={"TagSet": [{"Key": "Cache-Control", "Value": "no-cache"}]},
+        )
         print("File uploaded successfully.")
     except Exception as e:
         print(f"Error uploading file: {str(e)}")
@@ -557,19 +573,27 @@ def make_discharge_map():
     print("### Uploading outputs to AWS bucket ###")
     file_path = "output_dir/geojsons/" + dt_string_file + ".geojson"
     bucket_name = "thamessewage"  # S3 bucket name
-    aws_object_name = dt_string_file + ".geojson"  # The name of the file in the S3 bucket
+    aws_object_name = (
+        dt_string_file + ".geojson"
+    )  # The name of the file in the S3 bucket
 
-    empty_s3_folder(bucket_name=bucket_name, folder_name="now/")  # Empty the 'now' folder
+    empty_s3_folder(
+        bucket_name=bucket_name, folder_name="now/"
+    )  # Empty the 'now' folder
     # Upload file to current 'now' output and also the long-term storage 'past' folder
     upload_file_to_s3(
-        file_path=file_path, bucket_name=bucket_name, object_name="now/" + aws_object_name
+        file_path=file_path, bucket_name=bucket_name, object_name="now/now.geojson"
     )
     upload_file_to_s3(
-        file_path=file_path, bucket_name=bucket_name, object_name="past/" + aws_object_name
+        file_path=file_path,
+        bucket_name=bucket_name,
+        object_name="past/" + aws_object_name,
     )
 
     print("### Plotting outputs ###")
-    plot_sewage_map(downstream_xyz=(x, y, z), grid=mg, sewage_df=sewage_df, title=dt_string)
+    plot_sewage_map(
+        downstream_xyz=(x, y, z), grid=mg, sewage_df=sewage_df, title=dt_string
+    )
     plt.savefig("output_dir/plots/" + dt_string_file + ".png")
 
 
