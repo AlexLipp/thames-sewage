@@ -3,7 +3,7 @@ Realtime mapping of sewage release events in Thames basin
 
 ## Installation 
 
-In addition to the dependencies listed in `requirements.txt`, this script depends on the custom-made package [`autocatchments`](https://github.com/AlexLipp/autocatchments) which was created initially for personal use only. 
+In addition to the dependencies listed in `requirements.txt`, this script depends on the custom-made package [`autocatchments`](https://github.com/AlexLipp/autocatchments) which was created initially for personal use only. The file `environment.yaml` is a conda environment file that can be used to create a conda environment with the necessary requirements. These scripts were built using Python v 3.10.6.
 
 ## Usage 
 
