@@ -590,8 +590,8 @@ def make_discharge_map():
         print("! No discharges currently occurring !")
         out_geojson = empty_linestring_featurecollection("number_upstream_discharges")
 
-    print("### Saving outputs ###")
-    save_json(out_geojson, "output_dir/geojsons/" + dt_string_file + ".geojson")
+    # print("### Saving outputs ###")
+    # save_json(out_geojson, "output_dir/geojsons/" + dt_string_file + ".geojson")
 
     print("### Uploading outputs to AWS bucket ###")
     file_path = "output_dir/geojsons/" + dt_string_file + ".geojson"
@@ -613,11 +613,11 @@ def make_discharge_map():
         object_name="past/" + aws_object_name,
     )
 
-    print("### Plotting outputs ###")
-    plot_sewage_map(
-        downstream_xyz=(x, y, z), grid=mg, sewage_df=sewage_df, title=dt_string
-    )
-    plt.savefig("output_dir/plots/" + dt_string_file + ".png")
+    # print("### Plotting outputs ###")
+    # plot_sewage_map(
+    #     downstream_xyz=(x, y, z), grid=mg, sewage_df=sewage_df, title=dt_string
+    # )
+    # plt.savefig("output_dir/plots/" + dt_string_file + ".png")
 
 
 def get_all_past_discharges():
