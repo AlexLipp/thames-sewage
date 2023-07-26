@@ -550,6 +550,16 @@ def empty_s3_folder(bucket_name: str, folder_name: str) -> None:
         print(f"No objects found in '{folder_name}' folder.")
 
 
+def write_timestamp(datetime_string: str):
+    """Writes a file called "timestamp.txt" to file that contains a datetime"""
+    try:
+        with open("output_dir/timestamp.txt", "w") as file:
+            file.write(datetime_string)
+        print("Successfully created and wrote to 'timestamp.txt'")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
 def make_discharge_map():
     print("### Loading in drainage map ###")
     # Load from Topographic grid - This is very slow (5 minutes) due to the sink filling calculation.
@@ -592,6 +602,7 @@ def make_discharge_map():
 
     print("### Saving outputs ###")
     save_json(out_geojson, "output_dir/geojsons/" + dt_string_file + ".geojson")
+    write_timestamp(dt_string)
 
     print("### Uploading outputs to AWS bucket ###")
     file_path = "output_dir/geojsons/" + dt_string_file + ".geojson"
@@ -611,6 +622,12 @@ def make_discharge_map():
         file_path=file_path,
         bucket_name=bucket_name,
         object_name="past/" + aws_object_name,
+    )
+    # Add timestamp file to now folder
+    upload_file_to_s3(
+        file_path="output_dir/timestamp.txt",
+        bucket_name=bucket_name,
+        object_name="now/timestamp.txt",
     )
 
     # print("### Plotting outputs ###")
