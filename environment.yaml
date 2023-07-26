@@ -352,7 +352,6 @@ dependencies:
   - zstd=1.5.2=h6239696_4
   - pip:
     - adaptivekde==1.1.1
-    - autocatchments==0.1
     - cfgv==3.3.1
     - distlib==0.3.6
     - filelock==3.8.0

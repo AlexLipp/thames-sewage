@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sewage as swg
 from datetime import datetime
 

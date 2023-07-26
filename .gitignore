@@ -1,3 +1,4 @@
+cron.log
 *.obj
 *.json
 *.txt
