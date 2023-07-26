@@ -1,8 +1,27 @@
+"""
+    These functions calculate downstream impact of Combined Sewage Overflow
+    events in the Thames Basin.
+    Copyright (C) 2023  Alex Lipp
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import datetime
 import json
 import pickle
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Dict
 
 import autocatchments as ac
 import boto3
@@ -251,9 +270,7 @@ def get_recent_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
 def get_active_and_recent_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
     """Returns rows actively discharging or that discharged in last 48 hours"""
     return sewage_df.loc[
-        np.logical_or(
-            sewage_df["AlertStatus"] == "Discharging", sewage_df["AlertPast48Hours"]
-        ),
+        np.logical_or(sewage_df["AlertStatus"] == "Discharging", sewage_df["AlertPast48Hours"]),
         :,
     ]
 
@@ -272,9 +289,7 @@ def calc_downstream_polluted_nodes(
     # active = get_active_rows(sewage_df)
     active = get_active_and_recent_rows(sewage_df)
 
-    x, y = geographic_coords_to_model_xy(
-        (active["X"].to_numpy(), active["Y"].to_numpy()), mg
-    )
+    x, y = geographic_coords_to_model_xy((active["X"].to_numpy(), active["Y"].to_numpy()), mg)
     nodes = np.ravel_multi_index(
         (y.astype(int), x.astype(int)), mg.shape
     )  # Grid nodes of point sources
@@ -293,12 +308,8 @@ def calc_downstream_polluted_nodes(
     dstr_polluted_nodes = np.where(number_upstream_sources != 0)[0]
     # Number of upstream nodes at sites
     dstr_polluted_vals = number_upstream_sources[dstr_polluted_nodes]
-    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(
-        dstr_polluted_nodes, mg.shape
-    )
-    dstr_polluted_xy = model_xy_to_geographic_coords(
-        (dstr_polluted_gridx, dstr_polluted_gridy), mg
-    )
+    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(dstr_polluted_nodes, mg.shape)
+    dstr_polluted_xy = model_xy_to_geographic_coords((dstr_polluted_gridx, dstr_polluted_gridy), mg)
     return (dstr_polluted_xy[0], dstr_polluted_xy[1], dstr_polluted_vals)
 
 
@@ -464,9 +475,7 @@ def BNG_to_WGS84_points(
     OSR_BNG_REF.ImportFromEPSG(27700)
 
     OSR_BNG_to_WGS84 = osr.CoordinateTransformation(OSR_BNG_REF, OSR_WGS84_REF)
-    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(
-        np.vstack([eastings, northings]).T
-    )
+    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(np.vstack([eastings, northings]).T)
     lat_long_array = np.array(list(map(np.array, lat_long_tuple_list)))
     return (lat_long_array[:, 1], lat_long_array[:, 0])
 
@@ -607,17 +616,11 @@ def make_discharge_map():
     print("### Uploading outputs to AWS bucket ###")
     file_path = "output_dir/geojsons/" + dt_string_file + ".geojson"
     bucket_name = "thamessewage"  # S3 bucket name
-    aws_object_name = (
-        dt_string_file + ".geojson"
-    )  # The name of the file in the S3 bucket
+    aws_object_name = dt_string_file + ".geojson"  # The name of the file in the S3 bucket
 
-    empty_s3_folder(
-        bucket_name=bucket_name, folder_name="now/"
-    )  # Empty the 'now' folder
+    empty_s3_folder(bucket_name=bucket_name, folder_name="now/")  # Empty the 'now' folder
     # Upload file to current 'now' output and also the long-term storage 'past' folder
-    upload_file_to_s3(
-        file_path=file_path, bucket_name=bucket_name, object_name="now/now.geojson"
-    )
+    upload_file_to_s3(file_path=file_path, bucket_name=bucket_name, object_name="now/now.geojson")
     upload_file_to_s3(
         file_path=file_path,
         bucket_name=bucket_name,
@@ -639,7 +642,8 @@ def make_discharge_map():
 
 def get_all_past_discharges():
     """Retrieves all discharge events that have occurred/are occurring
-    since start of data records. Saves as a .json and upload to AWS bucket"""
+    since start of data records. Saves as a .json and upload to AWS bucket.
+    Returns a pandas dataframe of the events"""
 
     # Set up
     now = datetime.now()
@@ -662,3 +666,95 @@ def get_all_past_discharges():
         bucket_name=bucket_name,
         object_name="discharges_to_date/" + aws_object_name,
     )
+    return events_df
+
+
+def get_discharges_since_last_6_months(events_df: pd.DataFrame, permit_number: str) -> pd.DataFrame:
+    """Returns a dataframe of discharges since the last 6 months for a given permit number and
+    a dataframe of events.
+    If a discharge started before 6 months ago but ended after, the duration is updated to be
+    the stop time minus 6 months ago."""
+
+    # Filter events_df to only include events for the given permit number
+    events_df = events_df[events_df["PermitNumber"] == permit_number]
+
+    # 6 months ago in ISO format
+    six_months_ago = (datetime.now() - pd.DateOffset(weeks=26)).isoformat()
+
+    # Convert starts and stops to datetime objects
+    starts = events_df["StartDateTime"].apply(lambda x: datetime.fromisoformat(x))
+    stops = events_df["StopDateTime"].apply(lambda x: datetime.fromisoformat(x))
+    # Identify events which started before 6 months ago but ended after
+    started_beyond_6_months = (starts < six_months_ago) & (stops > six_months_ago)
+
+    # loop through these events and update durations to be StopDateTime - 6 months
+    for i in events_df[started_beyond_6_months].index:
+        events_df.at[i, "Duration"] = minutes_elapsed(
+            events_df.loc[i, "StopDateTime"], six_months_ago
+        )
+
+    # Identify events that started or stopped in the last 6 months
+    events_df = events_df[(starts > six_months_ago) | (stops > six_months_ago)]
+    return events_df
+
+
+def get_discharge_stats_last_6_months(
+    events_df: pd.DataFrame, permit_number: str
+) -> Dict[str, float]:
+    """Returns a dictionary of discharge statistics for the last 6 months for a given permit number."""
+    # time since 6 months ago in minutes
+    six_months_in_minutes = 262080
+    df = get_discharges_since_last_6_months(events_df, permit_number)
+    return {
+        "number_of_discharges": df.shape[0],
+        "total_duration_discharge_minutes": df["Duration"].sum(),
+        "fraction_time_discharging": df["Duration"].sum() / six_months_in_minutes,
+    }
+
+
+def permit_to_location(df: pd.DataFrame, permit_number: str) -> str:
+    """Returns the location name for a given permit number."""
+    return df[df["PermitNumber"] == permit_number]["LocationName"].iloc[0]
+
+
+def permit_to_X(df: pd.DataFrame, permit_number: str) -> str:
+    """Returns the X coordinate for a given permit number."""
+    return df[df["PermitNumber"] == permit_number]["X"].iloc[0]
+
+
+def permit_to_Y(df: pd.DataFrame, permit_number: str) -> str:
+    """Returns the Y coordinate for a given permit number."""
+    return df[df["PermitNumber"] == permit_number]["Y"].iloc[0]
+
+
+def permit_to_GridReference(df: pd.DataFrame, permit_number: str) -> str:
+    """Returns the GridReference for a given permit number."""
+    return df[df["PermitNumber"] == permit_number]["LocationGridRef"].iloc[0]
+
+
+def permit_to_Receiving(df: pd.DataFrame, permit_number: str) -> str:
+    """Returns the ReceivingWaterCourse for a given permit number."""
+    return df[df["PermitNumber"] == permit_number]["ReceivingWaterCourse"].iloc[0]
+
+
+def make_6_months_stats_df(events_df: pd.DataFrame) -> pd.DataFrame:
+    """Returns a dataframe of discharge statistics for the last 6 months for all discharge stations."""
+
+    # Loop through all permit numbers and get discharge stats for the last 6 months
+    stats = []
+    for permit_number in events_df["PermitNumber"].unique():
+        stats.append(
+            {
+                "PermitNumber": permit_number,
+                "LocationName": permit_to_location(events_df, permit_number),
+                "X": permit_to_X(events_df, permit_number),
+                "Y": permit_to_Y(events_df, permit_number),
+                "GridReference": permit_to_GridReference(events_df, permit_number),
+                "ReceivingWaterCourse": permit_to_Receiving(events_df, permit_number),
+                **get_discharge_stats_last_6_months(events_df, permit_number),
+            }
+        )
+    out_df = pd.DataFrame(stats)
+    # sort by total duration discharge
+    out_df = out_df.sort_values(by="total_duration_discharge_minutes", ascending=False)
+    return pd.DataFrame(out_df)
