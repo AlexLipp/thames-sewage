@@ -611,7 +611,7 @@ def make_discharge_map():
 
     print("### Saving outputs ###")
     save_json(out_geojson, "output_dir/geojsons/" + dt_string_file + ".geojson")
-    write_timestamp(dt_string)
+    write_timestamp(now.isoformat(timespec="seconds"))
 
     print("### Uploading outputs to AWS bucket ###")
     file_path = "output_dir/geojsons/" + dt_string_file + ".geojson"
