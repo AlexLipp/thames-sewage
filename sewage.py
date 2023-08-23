@@ -640,16 +640,17 @@ def make_discharge_map():
     # plt.savefig("output_dir/plots/" + dt_string_file + ".png")
 
 
-def get_all_past_discharges():
+def update_all_past_discharge_info():
     """Retrieves all discharge events that have occurred/are occurring
     since start of data records. Saves as a .json and upload to AWS bucket.
     Returns a pandas dataframe of the events"""
 
     # Set up
     now = datetime.now()
-    dt_string_file = now.strftime("%y%m%d_%H%M%S")
+    write_timestamp(now.isoformat(timespec="seconds"))
+
     bucket_name = "thamessewage"  # S3 bucket name
-    aws_object_name = dt_string_file + ".json"  # The name of the file in the S3 bucket
+    aws_object_name = "now.json"  # The name of the file in the S3 bucket
     file_path = "output_dir/discharges_to_date/discharges.json"
 
     alerts = get_all_discharge_alerts()
@@ -660,14 +661,19 @@ def get_all_past_discharges():
 
     empty_s3_folder(
         bucket_name=bucket_name, folder_name="discharges_to_date/"
-    )  # Empty the 'now' folder
+    )  # Empty the 'discharges_to_date' folder
     upload_file_to_s3(
         file_path=file_path,
         bucket_name=bucket_name,
         object_name="discharges_to_date/" + aws_object_name,
     )
-    return events_df
-
+    # Add timestamp file to discharges_to_date folder
+    upload_file_to_s3(
+        file_path="output_dir/timestamp.txt",
+        bucket_name=bucket_name,
+        object_name="now/timestamp.txt",
+    )    
+    print("Successfully updated all discharge info to date at " + now.isoformat(timespec="seconds"))
 
 def get_discharges_since_last_6_months(events_df: pd.DataFrame, permit_number: str) -> pd.DataFrame:
     """Returns a dataframe of discharges since the last 6 months for a given permit number and
