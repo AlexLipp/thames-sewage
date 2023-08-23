@@ -21,7 +21,7 @@ import datetime
 import json
 import pickle
 from datetime import datetime
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any
 
 import autocatchments as ac
 import boto3
@@ -37,41 +37,37 @@ from matplotlib.colors import LogNorm
 from osgeo import osr
 
 
-def get_all_discharge_starts():
-    """Gets all discharge starts that have occurred since API online in April 2022"""
-    # add in your API credentials here
-    clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
-    clientSecret = "FD8A75e4e5a84aB19Cf9abDfAebC31eA"
-
-    api_root = "https://prod-tw-opendata-app.uk-e1.cloudhub.io"
-    api_resource = "/data/STE/v1/DischargeAlerts"
-    url = api_root + api_resource
-
-    # Iterate through using the 1000 output limit
-    num_outputs = 1000
-    i = 0
+def fetch_all_API_entries(
+    params: Dict[str, Any], url: str, headers: Dict[str, str]
+) -> pd.DataFrame:
+    """
+    This function is used to get all the records from the API given the finite limit of records
+    that can be fetched in a single API call. It loops through the API calls until all the records
+    are fetched.
+    The function takes 3 arguments:
+    1. params: The parameters to be passed in the API call
+    2. url: The url of the API
+    3. headers: The headers to be passed in the API call
+    """
     df = pd.DataFrame()
-    while num_outputs == 1000:
-        # Only extract the items corresponding to discharge *starts*.
-        params = {
-            "limit": 1000,
-            "offset": i * 1000,
-            "col_1": "AlertType",
-            "operand_1": "eq",
-            "value_1": "Start",
-        }
-
+    while True:
         # send the request
+        # Print some information about the request:
+        print("Requesting from " + url)
         r = requests.get(
             url,
-            headers={"client_id": clientID, "client_secret": clientSecret},
+            headers=headers,
             params=params,
         )
-        print("Requesting from " + r.url)
+        # Print the status code of the request
+        print("Finished. Status code: " + str(r.status_code))
 
         # check response status and use only valid requests
         if r.status_code == 200:
             response = r.json()
+            if "items" not in response:
+                print("No more records to fetch")
+                break
             df_temp = pd.json_normalize(response, "items")
         else:
             raise Exception(
@@ -80,9 +76,33 @@ def get_all_discharge_starts():
                 )
             )
         df = pd.concat([df, df_temp])
-        i += 1
-        num_outputs = df_temp.shape[0]
-    print("Returning", df.shape[0], "`Start` records")
+        params["offset"] += params["limit"]  # Increment offset for the next request
+
+    print("Returning", df.shape[0], " records")
+    return df
+
+
+def get_all_discharge_starts():
+    """Gets all discharge starts that have occurred since API online in April 2022"""
+    # add in your API credentials here
+    clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
+    clientSecret = "FD8A75e4e5a84aB19Cf9abDfAebC31eA"
+    headers = {"client_id": clientID, "client_secret": clientSecret}
+
+    api_root = "https://prod-tw-opendata-app.uk-e1.cloudhub.io"
+    api_resource = "/data/STE/v1/DischargeAlerts"
+    url = api_root + api_resource
+
+    # Iterate through using the maximum 1000 output limit
+    params = {
+        "limit": 1000,  # Max limit
+        "offset": 0,  # Start at 0
+        "col_1": "AlertType",  # Only access "start" alerts
+        "operand_1": "eq",
+        "value_1": "Start",
+    }
+
+    df = fetch_all_API_entries(params, url, headers)
     return df
 
 
@@ -105,41 +125,16 @@ def get_all_discharge_alerts():
     # add in your API credentials here
     clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
     clientSecret = "FD8A75e4e5a84aB19Cf9abDfAebC31eA"
+    headers = {"client_id": clientID, "client_secret": clientSecret}
 
     api_root = "https://prod-tw-opendata-app.uk-e1.cloudhub.io"
     api_resource = "/data/STE/v1/DischargeAlerts"
     url = api_root + api_resource
 
     # Iterate through using the 1000 output limit
-    num_outputs = 1000
-    i = 0
-    df = pd.DataFrame()
-    while num_outputs == 1000:
-        # Only extract the items corresponding to discharge *starts*.
-        params = {"limit": 1000, "offset": i * 1000}
+    params = {"limit": 1000, "offset": 0}
 
-        # send the request
-        r = requests.get(
-            url,
-            headers={"client_id": clientID, "client_secret": clientSecret},
-            params=params,
-        )
-        print("Requesting from " + r.url)
-
-        # check response status and use only valid requests
-        if r.status_code == 200:
-            response = r.json()
-            df_temp = pd.json_normalize(response, "items")
-        else:
-            raise Exception(
-                "Request failed with status code {0}, and error message: {1}".format(
-                    r.status_code, r.json()
-                )
-            )
-        df = pd.concat([df, df_temp])
-        i += 1
-        num_outputs = df_temp.shape[0]
-    print("Returning", df.shape[0], "records")
+    df = fetch_all_API_entries(params, url, headers)
     return df
 
 
@@ -148,47 +143,20 @@ def get_all_discharge_stops():
     # add in your API credentials here
     clientID = "8a10d9580e9b4a0db6f1b2ae7ee19f7c"
     clientSecret = "FD8A75e4e5a84aB19Cf9abDfAebC31eA"
-
+    headers = {"client_id": clientID, "client_secret": clientSecret}
     api_root = "https://prod-tw-opendata-app.uk-e1.cloudhub.io"
     api_resource = "/data/STE/v1/DischargeAlerts"
     url = api_root + api_resource
 
-    # Iterate through using the 1000 output limit
-    num_outputs = 1000
-    i = 0
-    df = pd.DataFrame()
-    while num_outputs == 1000:
-        # Only extract the items corresponding to discharge *starts*.
-        params = {
-            "limit": 1000,
-            "offset": i * 1000,
-            "col_1": "AlertType",
-            "operand_1": "eq",
-            "value_1": "Stop",
-        }
+    params = {
+        "limit": 1000,
+        "offset": 0,
+        "col_1": "AlertType",
+        "operand_1": "eq",
+        "value_1": "Stop",
+    }
 
-        # send the request
-        r = requests.get(
-            url,
-            headers={"client_id": clientID, "client_secret": clientSecret},
-            params=params,
-        )
-        print("Requesting from " + r.url)
-
-        # check response status and use only valid requests
-        if r.status_code == 200:
-            response = r.json()
-            df_temp = pd.json_normalize(response, "items")
-        else:
-            raise Exception(
-                "Request failed with status code {0}, and error message: {1}".format(
-                    r.status_code, r.json()
-                )
-            )
-        df = pd.concat([df, df_temp])
-        i += 1
-        num_outputs = df_temp.shape[0]
-    print("Returning", df.shape[0], "`Stop` records")
+    df = fetch_all_API_entries(params, url, headers)
     return df
 
 
@@ -270,7 +238,9 @@ def get_recent_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
 def get_active_and_recent_rows(sewage_df: pd.DataFrame) -> pd.DataFrame:
     """Returns rows actively discharging or that discharged in last 48 hours"""
     return sewage_df.loc[
-        np.logical_or(sewage_df["AlertStatus"] == "Discharging", sewage_df["AlertPast48Hours"]),
+        np.logical_or(
+            sewage_df["AlertStatus"] == "Discharging", sewage_df["AlertPast48Hours"]
+        ),
         :,
     ]
 
@@ -289,7 +259,9 @@ def calc_downstream_polluted_nodes(
     # active = get_active_rows(sewage_df)
     active = get_active_and_recent_rows(sewage_df)
 
-    x, y = geographic_coords_to_model_xy((active["X"].to_numpy(), active["Y"].to_numpy()), mg)
+    x, y = geographic_coords_to_model_xy(
+        (active["X"].to_numpy(), active["Y"].to_numpy()), mg
+    )
     nodes = np.ravel_multi_index(
         (y.astype(int), x.astype(int)), mg.shape
     )  # Grid nodes of point sources
@@ -308,8 +280,12 @@ def calc_downstream_polluted_nodes(
     dstr_polluted_nodes = np.where(number_upstream_sources != 0)[0]
     # Number of upstream nodes at sites
     dstr_polluted_vals = number_upstream_sources[dstr_polluted_nodes]
-    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(dstr_polluted_nodes, mg.shape)
-    dstr_polluted_xy = model_xy_to_geographic_coords((dstr_polluted_gridx, dstr_polluted_gridy), mg)
+    dstr_polluted_gridy, dstr_polluted_gridx = np.unravel_index(
+        dstr_polluted_nodes, mg.shape
+    )
+    dstr_polluted_xy = model_xy_to_geographic_coords(
+        (dstr_polluted_gridx, dstr_polluted_gridy), mg
+    )
     return (dstr_polluted_xy[0], dstr_polluted_xy[1], dstr_polluted_vals)
 
 
@@ -475,7 +451,9 @@ def BNG_to_WGS84_points(
     OSR_BNG_REF.ImportFromEPSG(27700)
 
     OSR_BNG_to_WGS84 = osr.CoordinateTransformation(OSR_BNG_REF, OSR_WGS84_REF)
-    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(np.vstack([eastings, northings]).T)
+    lat_long_tuple_list = OSR_BNG_to_WGS84.TransformPoints(
+        np.vstack([eastings, northings]).T
+    )
     lat_long_array = np.array(list(map(np.array, lat_long_tuple_list)))
     return (lat_long_array[:, 1], lat_long_array[:, 0])
 
@@ -616,11 +594,17 @@ def make_discharge_map():
     print("### Uploading outputs to AWS bucket ###")
     file_path = "output_dir/geojsons/" + dt_string_file + ".geojson"
     bucket_name = "thamessewage"  # S3 bucket name
-    aws_object_name = dt_string_file + ".geojson"  # The name of the file in the S3 bucket
+    aws_object_name = (
+        dt_string_file + ".geojson"
+    )  # The name of the file in the S3 bucket
 
-    empty_s3_folder(bucket_name=bucket_name, folder_name="now/")  # Empty the 'now' folder
+    empty_s3_folder(
+        bucket_name=bucket_name, folder_name="now/"
+    )  # Empty the 'now' folder
     # Upload file to current 'now' output and also the long-term storage 'past' folder
-    upload_file_to_s3(file_path=file_path, bucket_name=bucket_name, object_name="now/now.geojson")
+    upload_file_to_s3(
+        file_path=file_path, bucket_name=bucket_name, object_name="now/now.geojson"
+    )
     upload_file_to_s3(
         file_path=file_path,
         bucket_name=bucket_name,
@@ -650,7 +634,6 @@ def update_all_past_discharge_info():
     write_timestamp(now.isoformat(timespec="seconds"))
 
     bucket_name = "thamessewage"  # S3 bucket name
-    aws_object_name = "now.json"  # The name of the file in the S3 bucket
     file_path = "output_dir/discharges_to_date/discharges.json"
 
     alerts = get_all_discharge_alerts()
@@ -665,17 +648,23 @@ def update_all_past_discharge_info():
     upload_file_to_s3(
         file_path=file_path,
         bucket_name=bucket_name,
-        object_name="discharges_to_date/" + aws_object_name,
+        object_name="discharges_to_date/up_to_now.json",
     )
     # Add timestamp file to discharges_to_date folder
     upload_file_to_s3(
         file_path="output_dir/timestamp.txt",
         bucket_name=bucket_name,
-        object_name="now/timestamp.txt",
-    )    
-    print("Successfully updated all discharge info to date at " + now.isoformat(timespec="seconds"))
+        object_name="discharges_to_date/timestamp.txt",
+    )
+    print(
+        "Successfully updated all discharge info to date at "
+        + now.isoformat(timespec="seconds")
+    )
 
-def get_discharges_since_last_6_months(events_df: pd.DataFrame, permit_number: str) -> pd.DataFrame:
+
+def get_discharges_since_last_6_months(
+    events_df: pd.DataFrame, permit_number: str
+) -> pd.DataFrame:
     """Returns a dataframe of discharges since the last 6 months for a given permit number and
     a dataframe of events.
     If a discharge started before 6 months ago but ended after, the duration is updated to be
