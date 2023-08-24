@@ -6,7 +6,7 @@
 
 Realtime mapping the downstream impact of Combined Sewage Overflow discharge events in the Thames basin. This repository provides the back-end for [`www.sewagemap.co.uk`](https://www.sewagemap.co.uk/). 
 
-This was developed by Alex Lipp, Sudhir Balaji and others. Please feel free to raise an issue above or contact us directly. 
+This was developed by Alex Lipp, Jonny Dawe and Sudhir Balaji. Please feel free to raise an issue above or contact us directly. 
 
 [![Twitter Follow](https://img.shields.io/twitter/follow/alexglipp?style=social)](https://twitter.com/intent/follow?screen_name=AlexGLipp)
 [![GitHub followers](https://img.shields.io/github/followers/AlexLipp?label=AlexLipp&style=social)](https://github.com/AlexLipp) 
