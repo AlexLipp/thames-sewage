@@ -631,7 +631,6 @@ def update_all_past_discharge_info():
 
     # Set up
     now = datetime.now()
-    write_timestamp(now.isoformat(timespec="seconds"))
 
     bucket_name = "thamessewage"  # S3 bucket name
     file_path = "output_dir/discharges_to_date/discharges.json"
@@ -651,6 +650,8 @@ def update_all_past_discharge_info():
         object_name="discharges_to_date/up_to_now.json",
     )
     # Add timestamp file to discharges_to_date folder
+    write_timestamp(now.isoformat(timespec="seconds"))
+
     upload_file_to_s3(
         file_path="output_dir/timestamp.txt",
         bucket_name=bucket_name,
