@@ -1,13 +1,7 @@
 """
-Auxiliary functions for uploading files to a AWS S3 bucket
+Auxiliary functions for uploading files to the AWS S3 bucket
 """
-
 import boto3
-import os
-from datetime import datetime
-
-BUCKET_NAME = "thamessewage"
-PROFILE_NAME = os.getenv("S3_PROFILE_NAME")
 
 
 def empty_s3_folder(bucket_name: str, folder_name: str, profile_name: str) -> None:
@@ -24,9 +18,11 @@ def empty_s3_folder(bucket_name: str, folder_name: str, profile_name: str) -> No
         # Perform the batch delete operation
         s3.delete_objects(Bucket=bucket_name, Delete={"Objects": objects_to_delete})
 
-        print(f"All objects in '{folder_name}' folder deleted successfully.")
+        print(
+            f"All objects in '\033[92m{folder_name}\033[0m' folder deleted successfully."
+        )
     else:
-        print(f"No objects found in '{folder_name}' folder.")
+        print(f"No objects found in '\033[92m{folder_name}\033[0m' folder.")
 
 
 def upload_file_to_s3(
@@ -45,47 +41,22 @@ def upload_file_to_s3(
             Key=object_name,
             Tagging={"TagSet": [{"Key": "Cache-Control", "Value": "no-cache"}]},
         )
-        print("File uploaded successfully.")
+        # Write print(f"File {file_path} uploaded to {bucket_name}/{object_name} successfully."), but make the file paths and destinations in red using ANSI escape codes
+        print(
+            f"File \033[92m{file_path}\033[0m uploaded to \033[92m{bucket_name}/{object_name}\033[0m successfully."
+        )
+
     except Exception as e:
         print(f"Error uploading file: {str(e)}")
 
 
-def write_timestamp(datetime_string: str):
-    """Writes a file called "timestamp.txt" to file that contains a datetime"""
+def write_timestamp(datetime_string: str, timestamp_filename: str):
+    """Writes a file that contains "datetime_string" to file "timestamp_filename"""
     try:
-        with open("output_dir/timestamp.txt", "w") as file:
+        with open(timestamp_filename, "w") as file:
             file.write(datetime_string)
-        print("Successfully created and wrote to 'timestamp.txt'")
+        print(
+            f"Successfully wrote timestamp \033[92m{datetime_string}\033[0m to \033[92m{timestamp_filename}\033[0m."
+        )
     except Exception as e:
         print(f"An error occurred: {e}")
-
-
-def upload_downstream_impact_files_to_s3(file_path: str) -> None:
-    """Uploads geojson files to ThamesSewage AWS bucket"""
-
-    empty_s3_folder(
-        bucket_name=BUCKET_NAME, folder_name="now/", profile_name=PROFILE_NAME
-    )  # Empty the 'now' folder
-    # Upload file to current 'now' output and also the long-term storage 'past' folder
-    upload_file_to_s3(
-        file_path="output_dir/geojsons/" + file_path,
-        bucket_name=BUCKET_NAME,
-        object_name="now/now.geojson",
-        profile_name=PROFILE_NAME,
-    )
-    upload_file_to_s3(
-        file_path="output_dir/geojsons/" + file_path,
-        bucket_name=BUCKET_NAME,
-        object_name="past/" + file_path,
-        profile_name=PROFILE_NAME,
-    )
-    # Add timestamp file to now folder
-
-    write_timestamp(datetime.now().isoformat(timespec="seconds"))
-
-    upload_file_to_s3(
-        file_path="output_dir/timestamp.txt",
-        bucket_name=BUCKET_NAME,
-        object_name="now/timestamp.txt",
-        profile_name=PROFILE_NAME,
-    )
