@@ -1,7 +1,6 @@
-"""
-Auxiliary functions for uploading files to the AWS S3 bucket
-"""
 import boto3
+import json
+from osgeo import ogr, osr
 
 
 def empty_s3_folder(bucket_name: str, folder_name: str, profile_name: str) -> None:
@@ -60,3 +59,17 @@ def write_timestamp(datetime_string: str, timestamp_filename: str):
         )
     except Exception as e:
         print(f"An error occurred: {e}")
+
+
+def project_geojson_BNG_WGS84(geojson: dict) -> dict:
+    """Projects a geojson from BNG to WGS84. Modifies in place"""
+    source_srs = osr.SpatialReference()
+    source_srs.ImportFromEPSG(27700)  # British National Grid
+    target_srs = osr.SpatialReference()
+    target_srs.ImportFromEPSG(4326)  # WGS84
+    transform = osr.CoordinateTransformation(source_srs, target_srs)
+
+    for feature in geojson["features"]:
+        geom = ogr.CreateGeometryFromJson(json.dumps(feature["geometry"]))
+        geom.Transform(transform)
+        feature["geometry"] = json.loads(geom.ExportToJson())
