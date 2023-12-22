@@ -3,6 +3,8 @@ from datetime import datetime
 import json
 import os
 
+from geojson import Feature, FeatureCollection
+
 from aux_funcs import (
     empty_s3_folder,
     upload_file_to_s3,
@@ -117,6 +119,23 @@ def main():
     geojson_file_name = now.strftime("%y%m%d_%H%M%S.geojson")
     tw = ThamesWater(tw_clientID, tw_clientSecret)
 
+    print("Calculating current downstream discharge information")
+    geojson = tw.get_downstream_geojson(include_recent_discharges=True)
+    geojson = project_geojson_BNG_WGS84(geojson)  # Project to WGS84 from BNG
+    # Save geojson to local directory
+
+    # For legacy reasons we need to wrap the geojson in a FeatureCollection...
+    feature_coll = FeatureCollection(
+        [Feature(geometry=geojson, type="MultiLineString")]
+    )
+
+    with open(LOCAL_GEOJSON_DIR + geojson_file_name, "w") as f:
+        json.dump(feature_coll, f)
+    print("Uploading outputs to AWS bucket")
+    upload_downstream_impact_files_to_s3(
+        geojson_file_name, now.isoformat(timespec="seconds")
+    )
+
     print("Fetching historical discharge information")
     json_file_name = now.strftime("%y%m%d_%H%M%S.json")
     tw.set_all_histories()
@@ -127,16 +146,6 @@ def main():
     print("Uploading outputs to AWS bucket")
     upload_historical_data_files_to_s3(
         json_file_name, now.isoformat(timespec="seconds")
-    )
-    print("Calculating current downstream discharge information")
-    geojson = tw.get_downstream_geojson(include_recent_discharges=True)
-    project_geojson_BNG_WGS84(geojson)  # Project to WGS84 from BNG
-    # Save geojson to local directory
-    with open(LOCAL_GEOJSON_DIR + geojson_file_name, "w") as f:
-        json.dump(geojson, f)
-    print("Uploading outputs to AWS bucket")
-    upload_downstream_impact_files_to_s3(
-        geojson_file_name, now.isoformat(timespec="seconds")
     )
 
     print("Finished @", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))

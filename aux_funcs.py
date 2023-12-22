@@ -62,14 +62,12 @@ def write_timestamp(datetime_string: str, timestamp_filename: str):
 
 
 def project_geojson_BNG_WGS84(geojson: dict) -> dict:
-    """Projects a geojson from BNG to WGS84. Modifies in place"""
+    """Projects a geojson from BNG to WGS84"""
     source_srs = osr.SpatialReference()
     source_srs.ImportFromEPSG(27700)  # British National Grid
     target_srs = osr.SpatialReference()
     target_srs.ImportFromEPSG(4326)  # WGS84
     transform = osr.CoordinateTransformation(source_srs, target_srs)
-
-    for feature in geojson["features"]:
-        geom = ogr.CreateGeometryFromJson(json.dumps(feature["geometry"]))
-        geom.Transform(transform)
-        feature["geometry"] = json.loads(geom.ExportToJson())
+    geom = ogr.CreateGeometryFromJson(json.dumps(geojson))
+    geom.Transform(transform)
+    return json.loads(geom.ExportToJson())
