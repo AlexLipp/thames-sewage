@@ -77,16 +77,17 @@ def upload_downstream_impact_files_to_s3(
         profile_name=PROFILE_NAME,
     )
 
-
-def upload_historical_data_files_to_s3(json_file_path: str, timestamp: str) -> None:
-    """Uploads the downstream impact files to the ThamesSewage AWS bucket"""
-    # Empty the 'now' folder
+def delete_historical_data_files_from_s3() -> None:
+    """Deletes the historical data files from the ThamesSewage AWS bucket"""
     empty_s3_folder(
         bucket_name=BUCKET_NAME,
         folder_name=AWS_HISTORICAL_DIR,
         profile_name=PROFILE_NAME,
     )
-    # Upload file to current 'now' output and also the long-term storage 'past' folder
+
+
+def upload_historical_data_files_to_s3(json_file_path: str, timestamp: str) -> None:
+    """Uploads the downstream impact files to the ThamesSewage AWS bucket"""
     upload_file_to_s3(
         file_path=LOCAL_HISTORICAL_DATA_DIR + json_file_path,
         bucket_name=BUCKET_NAME,
@@ -137,6 +138,8 @@ def main():
     )
 
     print("Fetching historical discharge information")
+    # We do this first so that if the Thames Water API fails we aren't left with out of date data
+    delete_historical_data_files_from_s3()
     json_file_name = now.strftime("%y%m%d_%H%M%S.json")
     tw.set_all_histories()
     df = tw.history_to_discharge_df()
