@@ -139,14 +139,14 @@ def main():
 
     print("Fetching historical discharge information")
     # We do this first so that if the Thames Water API fails we aren't left with out of date data
-    delete_historical_data_files_from_s3()
     json_file_name = now.strftime("%y%m%d_%H%M%S.json")
     tw.set_all_histories()
     df = tw.history_to_discharge_df()
     # Fill in missing stop times (for ongoing discharges) with now for consistency with www.sewagemap.com legacy inputs
     df["StopDateTime"] = df["StopDateTime"].fillna(datetime.now())
     df.to_json(LOCAL_HISTORICAL_DATA_DIR + json_file_name)
-    print("Uploading outputs to AWS bucket")
+    print("Uploading outputs to AWS bucket")    
+    delete_historical_data_files_from_s3()
     upload_historical_data_files_to_s3(
         json_file_name, now.isoformat(timespec="seconds")
     )
