@@ -71,3 +71,29 @@ def project_geojson_BNG_WGS84(geojson: dict) -> dict:
     geom = ogr.CreateGeometryFromJson(json.dumps(geojson))
     geom.Transform(transform)
     return json.loads(geom.ExportToJson())
+
+
+def project_featurecollection_BNG_WGS84(feature_collection: dict) -> dict:
+    """Projects a FeatureCollection from BNG to WGS84"""
+    # Define source and target spatial references
+    source_srs = osr.SpatialReference()
+    source_srs.ImportFromEPSG(27700)  # British National Grid
+    target_srs = osr.SpatialReference()
+    target_srs.ImportFromEPSG(4326)  # WGS84
+
+    # Create a coordinate transformation
+    transform = osr.CoordinateTransformation(source_srs, target_srs)
+
+    # Iterate over each feature in the FeatureCollection
+    for feature in feature_collection["features"]:
+        # Convert the feature's geometry to a JSON string
+        geom_json = json.dumps(feature["geometry"])
+        # Create an OGR geometry from the JSON string
+        geom = ogr.CreateGeometryFromJson(geom_json)
+        # Apply the coordinate transformation to the geometry
+        geom.Transform(transform)
+        # Update the feature's geometry with the transformed geometry
+        feature["geometry"] = json.loads(geom.ExportToJson())
+
+    # Return the updated FeatureCollection
+    return feature_collection
