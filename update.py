@@ -46,6 +46,8 @@ AWS_GEOJSON_FILENAME = "now.geojson"
 AWS_INFO_GEOJSON_FILENAME = "info_now.geojson"
 # Name of the json file in the AWS bucket for historical discharges
 AWS_JSON_FILENAME = "up_to_now.json"
+# Name of the json file in the AWS bucket for historical offline discharges
+AWS_OFFLINE_JSON_FILENAME = "up_to_now_offline.json"
 
 
 def upload_downstream_impact_files_to_s3(
@@ -120,12 +122,20 @@ def delete_historical_data_files_from_s3() -> None:
     )
 
 
-def upload_historical_data_files_to_s3(json_file_path: str, timestamp: str) -> None:
+def upload_historical_data_files_to_s3(
+    json_file_path: str, offline_json_file_path: str, timestamp: str
+) -> None:
     """Uploads the downstream impact files to the ThamesSewage AWS bucket"""
     upload_file_to_s3(
         file_path=LOCAL_HISTORICAL_DATA_DIR + json_file_path,
         bucket_name=BUCKET_NAME,
         object_name=AWS_HISTORICAL_DIR + AWS_JSON_FILENAME,
+        profile_name=PROFILE_NAME,
+    )
+    upload_file_to_s3(
+        file_path=LOCAL_HISTORICAL_DATA_DIR + offline_json_file_path,
+        bucket_name=BUCKET_NAME,
+        object_name=AWS_HISTORICAL_DIR + AWS_OFFLINE_JSON_FILENAME,
         profile_name=PROFILE_NAME,
     )
     # Add timestamp file to now folder
@@ -168,7 +178,8 @@ def main():
         json.dump(feature_coll, f)
     print("Uploading outputs to AWS bucket")
     upload_downstream_impact_files_to_s3(
-        geojson_file_name, now.isoformat(timespec="seconds")
+        geojson_file_path=geojson_file_name,
+        timestamp=now.isoformat(timespec="seconds"),
     )
 
     print("Calculating current downstream discharge information...")
@@ -179,10 +190,11 @@ def main():
         json.dump(info_geojson, f)
     print("Uploading outputs to AWS bucket")
     upload_downstream_impact_info_files_to_s3(
-        info_geojson_file_name, now.isoformat(timespec="seconds")
+        info_geojson_file_path=info_geojson_file_name,
+        timestamp=now.isoformat(timespec="seconds"),
     )
 
-    print("Fetching historical discharge information...")
+    print("Fetching historical event information...")
     # We do this first so that if the Thames Water API fails we aren't left with out of date data
     json_file_name = now.strftime("%y%m%d_%H%M%S.json")
     tw.set_all_histories()
@@ -190,10 +202,19 @@ def main():
     # Fill in missing stop times (for ongoing discharges) with now for consistency with www.sewagemap.com legacy inputs
     df["StopDateTime"] = df["StopDateTime"].fillna(datetime.now())
     df.to_json(LOCAL_HISTORICAL_DATA_DIR + json_file_name)
+    # Now do the same for Offline history
+    offline_json_file_name = now.strftime("%y%m%d_%H%M%S_offline.json")
+    off_df = tw.history_to_offline_df()
+    # Fill in missing stop times (for ongoing events) with now for consistency with www.sewagemap.com legacy inputs
+    off_df["StopDateTime"] = off_df["StopDateTime"].fillna(datetime.now())
+    off_df.to_json(LOCAL_HISTORICAL_DATA_DIR + offline_json_file_name)
+
     print("Uploading outputs to AWS bucket")
     delete_historical_data_files_from_s3()
     upload_historical_data_files_to_s3(
-        json_file_name, now.isoformat(timespec="seconds")
+        json_file_path=json_file_name,
+        offline_json_file_path=offline_json_file_name,
+        timestamp=now.isoformat(timespec="seconds"),
     )
 
     print("Finished @", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
