@@ -32,8 +32,6 @@ def upload_file_to_s3(
     s3 = session.client("s3")
     try:
         s3.upload_file(file_path, bucket_name, object_name)
-        # Give public read access
-        s3.put_object_acl(ACL="public-read", Bucket=bucket_name, Key=object_name)
         # Set cache-control headers to prevent caching
         s3.put_object_tagging(
             Bucket=bucket_name,
