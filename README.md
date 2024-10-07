@@ -16,10 +16,10 @@ This was developed by [Alex Lipp](https://www.merton.ox.ac.uk/people/dr-alexande
 
 ## Installation
 
-This script uses the `POOPy` package which allows easily interaction with Water Company EDM APIs, and analysis of the data. This is available at: [`github.com/AlexLipp/POOPy`](https://github.com/AlexLipp/POOPy).
+This script relies on the `POOPy` package which I have created to allow easy interaction with Water Company Event Duration Monitoring APIs, and analysis of the data. This is also freely available at: [`github.com/AlexLipp/POOPy`](https://github.com/AlexLipp/POOPy).
 
-To access the data stored in the Thames Water API you will need to register for the API [here](https://www.thameswater.co.uk/about-us/performance/river-health/storm-discharge-data#third-party-api). The script expects the API keys to be stored as environment variables (details given in the script).
+To access the data stored in the Thames Water API you will need to register for the API [here](https://www.thameswater.co.uk/about-us/performance/river-health/storm-discharge-data#third-party-api). The script expects the API keys to be stored as environment variables (details given in the [POOPy](https://github.com/AlexLipp/POOPy) repository).
 
 ## Usage
 
-The core script is `update.py` which is called automatically every 15 minutes. This function calculates a geoJSON file which contains the downstream impact of all active or recently active CSO in the Thames Basin. Additionally, it creates a JSON file which contains the history of all discharges for all monitors. These are automatically uploaded to the AWS bucket which hosts them. These are then read by the `www.sewagemap.co.uk` front-end which visualises them.
+The core script is `update.py` which is called automatically every 15 minutes. This function, using POOPy functions, calculates a geoJSON file which contains the downstream impact of all active or recently active CSO spills in the Thames Basin. Additionally, it creates a JSON file which contains the history of all discharges for all monitors. These are automatically uploaded to the Amazon Web Services bucket which hosts them. The data is then fronted using the CloudFront delivery service. The files are read by the `www.sewagemap.co.uk` front-end which visualises them.
