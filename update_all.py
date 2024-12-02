@@ -241,7 +241,7 @@ for company, data in watercompany_info.items():
     upload_file_to_s3(
         file_path=local_output_dir + TIMESTAMP_FILENAME,
         bucket_name=BUCKET_NAME,
-        object_name=aws_folder + TIMESTAMP_FILENAME,
+        object_name=aws_folder + company + "_" + TIMESTAMP_FILENAME,
         profile_name=PROFILE_NAME,
     )
 
