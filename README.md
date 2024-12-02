@@ -26,7 +26,7 @@ The script `update.py` is included for legacy purposes, and updates only Thames 
 ## Output data
  [![License:CC BY NC SA](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-The live downstream impact of Combined Sewage Overflow (CSO) discharge events **is freely available** under a CC-BY-NC-SA license. The links in the table below give access to the data as `.geoJSON` files. The data are updated automatically every ~20 minutes (but the URL remains the same). These can be incorporated into your own projects, web-apps, or GIS projects but please attribute the source as `www.sewagemap.co.uk`. It'd be wonderful to hear about any projects you use this data in, so please do [reach out to me](https://alexlipp.github.io/) to let me know, or if I can be of any assistance.
+The live downstream impact of Combined Sewage Overflow (CSO) discharge events **is freely available** under a [CC-BY-NC-SA](https://creativecommons.org/licenses/by-nc-sa/4.0/) license. The links in the table below give access to the data as `.geoJSON` files. The data are updated automatically every ~20 minutes (but the URL remains the same). These can be incorporated into your own projects, web-apps, or GIS projects but please attribute the source as `www.sewagemap.co.uk`. It'd be wonderful to hear about any projects you use this data in, so please do [reach out to me](https://alexlipp.github.io/) to let me know, or if I can be of any assistance.
 
 The _Downstream impacted reaches_ is a `LineString` feature-collection simply showing the sections of a river which are downstream of current discharges, and optionally those in the last 48 hrs. These are the brown lines on `www.sewagemap.co.uk`. 
 
@@ -49,4 +49,4 @@ SouthWest Water | [Current spills](https://d1kmd884co9q6x.cloudfront.net/downstr
 
 ## Source data 
 
-The live EDM data which we use to map downstream sectons is sourced, in England, from the [Stream Storm Overflow Data Hub](https://www.streamwaterdata.co.uk/pages/storm-overflows-data) which is provided under a CC-BY license. For Wales, we use data presented on the [WelshWater Storm Overflow map](https://corporate.dwrcymru.com/en/community/environment/storm-overflow-map). 
+The live EDM data which we use to map downstream sectons is sourced, in England, from the [Stream Storm Overflow Data Hub](https://www.streamwaterdata.co.uk/pages/storm-overflows-data) which is provided under a CC-BY license. Each individual water company maintain's an individual API which you can access from the given link. For Wales, we use data presented on the [WelshWater Storm Overflow map](https://corporate.dwrcymru.com/en/community/environment/storm-overflow-map). 
