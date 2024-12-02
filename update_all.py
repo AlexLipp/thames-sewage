@@ -114,6 +114,20 @@ for company in watercompanies:
         print(f"Creating directory {watercompany_info[company]['local_output_dir']}")
         os.makedirs(watercompany_info[company]["local_output_dir"])
 
+
+now = datetime.now()
+# Add timestamp file to now folder
+write_timestamp(
+    datetime_string=now.isoformat(timespec="seconds"),
+    timestamp_filename=LOCAL_OUTPUT_DIR + "downstream_impact/global_timestamp.txt",
+)
+upload_file_to_s3(
+    file_path=LOCAL_OUTPUT_DIR + "downstream_impact/global_timestamp.txt",
+    bucket_name=BUCKET_NAME,
+    object_name="downstream_impact/global_timestamp.txt",
+    profile_name=PROFILE_NAME,
+)
+
 # Now we loop through each water company in the dictionary and calculate the downstream impact of spills
 
 # We suppress warnings to avoid cluttering the output.
@@ -230,6 +244,11 @@ for company, data in watercompany_info.items():
         object_name=aws_folder + TIMESTAMP_FILENAME,
         profile_name=PROFILE_NAME,
     )
+
+    # Now delete the contents of local_output_dir
+    print("Cleaning up local directory...")
+    for file in os.listdir(local_output_dir):
+        os.remove(local_output_dir + file)
 
 endtime = datetime.now()
 
